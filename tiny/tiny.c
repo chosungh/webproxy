@@ -1,11 +1,11 @@
 /* $begin tinymain */
 /*
- * tiny.c - A simple, iterative HTTP/1.0 Web server that uses the
- *     GET method to serve static and dynamic content.
- *
- * Updated 11/2019 droh
- *   - Fixed sprintf() aliasing issue in serve_static(), and clienterror().
- */
+* tiny.c - A simple, iterative HTTP/1.0 Web server that uses the
+*     GET method to serve static and dynamic content.
+*
+* Updated 11/2019 droh
+*   - Fixed sprintf() aliasing issue in serve_static(), and clienterror().
+*/
 #include "csapp.h"
 #include <_strings.h>
 // #include <cstdio>
@@ -112,7 +112,6 @@ void doit(int fd) {
 
 // 클라이언트가 보낸 요청 헤더들을 읽는 함수
 void read_requesthdrs(rio_t *rp) {
- 
   // 요청 헤더를 저장할 버퍼 선언(8192바이트)
   char buf[MAXLINE];
 
@@ -169,7 +168,6 @@ int parse_uri(char *uri, char *filename, char *cgiargs) {
   }
 }
 
-
 // 클라이언트에게 정적 파일을 제공하는 함수
 void serve_static(int fd, char *filename, int filesize) {
   int srcfd;    // fd 번호를 저장하기 위한 변수 선언
@@ -192,10 +190,23 @@ void serve_static(int fd, char *filename, int filesize) {
 
   // 읽기 전용(O_RDONLY)으로 파일 열고 그 파일에 대한 번호(파일 디스크립터)를 반환하여 저장
   srcfd = Open(filename, O_RDONLY, 0);
-  
-  // 파일을 프로세스 메모리에 매핑
+   
+  // 파일을 메모리에 매핑(메모리 주소 공간에 연결)
   srcp = Mmap(0, filesize, PROT_READ, MAP_PRIVATE, srcfd, 0); 
-  
+
+  // 숙제 문제 11.9
+  // malloc으로 filesize만큼의 메모리 할당
+  srcp = malloc(filesize);
+
+  // scfd에 저장된 파일을 scrp에 복사
+  Rio_readn(srcfd, srcp, filesize);
+   
+  // Mmap() Vs malloc() 등
+  // 아마 이 둘의 차이는 메모리에 직접적으로 복사되었는가의 차이인 것 같다. 
+  // malloc() 이후 Rio_readn()은 malloc()으로 할당된 공간에 파일을 직접적으로 복사하고
+  // Mmap()은 주소 공간에 그저 하나의 파일과 연결되어 있음을 나타내는 것이기에 메모리에 직접적으로 복사되었는가의 차이인 것 같다.  
+
+
   // 파일 디스크립터 닫기. 왜? -> 이미 메모리에 매핑되었기 때문(파일 디스크립터가 없어도 접근할 수 있기 때문)
   // close()는 파일 디스크립터 테이블에서 항목을 제거하지만, 
   // mmap()으로 매핑된 메모리는 여전히 프로세스의 가상 메모리 공간에 남아 있기 때문에 접근이 가능하다. 
@@ -208,7 +219,7 @@ void serve_static(int fd, char *filename, int filesize) {
   // 메모리 매핑 해제
   Munmap(srcp, filesize);
 }
-
+ 
 // 클라이언트에게 동적 파일을 제공하는 함수
 void serve_dynamic(int fd, char *filename, char *cgiargs) {
   char buf[MAXLINE], *emptylist[] = { NULL };
@@ -248,6 +259,10 @@ void get_filetype(char *filename, char *filetype)
       strcpy(filetype, "image/png");
     else if (strstr(filename, ".jpg"))
       strcpy(filetype, "image/jpeg");
+    else if (strstr(filename, ".mpg"))
+      strcpy(filetype, "video/mpeg");
+    else if (strstr(filename, ".mov"))
+      strcpy(filetype, "video/quicktime");
     else
       strcpy(filetype, "text/plain");
 }
@@ -309,4 +324,4 @@ int main(int argc, char **argv) {
     doit(connfd);   // line:netp:tiny:doit
     Close(connfd);  // line:netp:tiny:close
   }
-}
+} 
